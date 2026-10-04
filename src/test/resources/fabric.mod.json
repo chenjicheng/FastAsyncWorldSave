@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "id": "fastasyncworldsave_tests",
+  "version": "1.0.0",
+  "environment": "*",
+  "mixins": ["fastasyncworldsave-test.mixins.json"]
+}

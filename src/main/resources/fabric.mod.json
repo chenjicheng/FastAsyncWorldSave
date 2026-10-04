@@ -3,40 +3,32 @@
   "id": "fastasyncworldsave",
   "version": "${version}",
 
-  "name": "fastasyncworldsave Mod",
-  "description": "",
+  "name": "Fast Async World Save (1.21.11 Maintenance)",
+  "description": "Ordered asynchronous world and player NBT writes with safe flush and close barriers.",
   "authors": [
-    "Someaddon"
+    "Someaddon",
+    "chenjicheng (1.21.11 maintenance)"
   ],
   "contact": {
-    "homepage": "",
-    "sources": ""
+    "sources": "https://github.com/chenjicheng/FastAsyncWorldSave",
+    "issues": "https://github.com/chenjicheng/FastAsyncWorldSave/issues"
   },
 
   "license": "ARR",
-  "icon": "assets/icon.png",
 
   "environment": "*",
   "entrypoints": {
     "main": [
       "com.fastasyncworldsave.FastAsyncWorldSave"
-    ],
-    "client": [
-      "com.fastasyncworldsave.FastAsyncWorldSaveClient"
     ]
   },
   "mixins": [
     "fastasyncworldsave.mixins.json"
   ],
-  "accessWidener": "fastasyncworldsave.accessWidener",
   "depends": {
-    "fabricloader": ">=0.11.3",
-    "cupboard": "*",
-    "fabric": "*",
-    "minecraft": "1.21.x",
+    "fabricloader": ">=0.19.5",
+    "fabric-api": ">=0.141.6+1.21.11",
+    "minecraft": "1.21.11",
     "java": ">=21"
-  },
-  "suggests": {
-    "another-mod": "*"
   }
 }

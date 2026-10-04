@@ -1,16 +1,17 @@
 {
-  "required": false,
+  "required": true,
   "minVersion": "0.8",
   "package": "com.fastasyncworldsave.mixin",
-  "compatibilityLevel": "JAVA_17",
+  "compatibilityLevel": "JAVA_21",
   "mixinPriority": 200,
   "mixins": [
     "LevelStorageSourceMixin",
-    "PlayerDatStorageMixin"
+    "PlayerDatStorageMixin",
+    "MinecraftServerMixin"
   ],
   "client": [
   ],
   "injectors": {
-    "defaultRequire": 0
+    "defaultRequire": 1
   }
 }
