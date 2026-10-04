@@ -2,6 +2,7 @@ package com.fastasyncworldsave.mixin;
 
 import com.fastasyncworldsave.FastAsyncWorldSave;
 import com.mojang.serialization.Dynamic;
+import java.nio.file.Path;
 import java.util.function.Consumer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.storage.LevelStorageSource;
@@ -9,6 +10,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -16,11 +18,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class LevelStorageSourceMixin {
     @Shadow public abstract LevelStorageSource.LevelDirectory getLevelDirectory();
 
-    @Inject(method = "saveLevelData", at = @At("HEAD"), cancellable = true)
-    private void saveSnapshot(CompoundTag tag, CallbackInfo ci) {
+    @Redirect(method = "saveLevelData", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/nbt/NbtIo;writeCompressed(Lnet/minecraft/nbt/CompoundTag;Ljava/nio/file/Path;)V"))
+    private void saveSnapshot(CompoundTag tag, Path temporary) {
         var directory = getLevelDirectory();
-        FastAsyncWorldSave.save(tag, directory.dataFile(), directory.oldDataFile(), "level");
-        ci.cancel();
+        FastAsyncWorldSave.save(tag, temporary, directory.dataFile(), directory.oldDataFile());
+    }
+
+    @Redirect(method = "saveLevelData", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/util/Util;safeReplaceFile(Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;)V"))
+    private void leaveReplacementToWorker(Path target, Path temporary, Path backup) {
+        // The queued transaction publishes this same temporary file only after a complete write.
     }
 
     // These methods read, replace, archive or delete files that a queued save owns.

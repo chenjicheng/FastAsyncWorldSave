@@ -1,6 +1,7 @@
 package com.fastasyncworldsave;
 
 import com.fastasyncworldsave.test.WriteFault;
+import com.fastasyncworldsave.test.SaveCallbacks;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -49,6 +50,10 @@ class StorageRegressionTest {
         source = LevelStorageSource.createDefault(directory.resolve("saves"));
         access = source.validateAndCreateAccess("world");
         players = access.createPlayerStorage();
+        SaveCallbacks.PLAYERS.set(0);
+        SaveCallbacks.LEVELS.set(0);
+        SaveCallbacks.playerThread = null;
+        SaveCallbacks.levelThread = null;
     }
 
     @AfterEach
@@ -56,6 +61,39 @@ class StorageRegressionTest {
         drain();
         WriteFault.DIRECTORY.set(null);
         access.close();
+    }
+
+    @Test
+    void playerSaveKeepsThirdPartyReturnCallbackOnCallerThread() throws Exception {
+        players.save(player("old"));
+        drain();
+        int previous = SaveCallbacks.PLAYERS.get();
+        Path playerFile = access.getLevelPath(LevelResource.PLAYER_DATA_DIR).resolve(playerId + ".dat");
+        try (var blocked = new BlockedWriter()) {
+            players.save(player("new"));
+            assertEquals(previous + 1, SaveCallbacks.PLAYERS.get(), "Other mods must persist their data at vanilla save RETURN");
+            assertSame(Thread.currentThread(), SaveCallbacks.playerThread);
+            assertEquals("old", read(playerFile).getStringOr("Marker", ""));
+            blocked.release();
+        }
+        drain();
+        assertEquals("new", read(playerFile).getStringOr("Marker", ""));
+    }
+
+    @Test
+    void levelSaveKeepsThirdPartyReturnCallbackOnCallerThread() throws Exception {
+        saveLevel(levelTag("old"));
+        drain();
+        int previous = SaveCallbacks.LEVELS.get();
+        try (var blocked = new BlockedWriter()) {
+            saveLevel(levelTag("new"));
+            assertEquals(previous + 1, SaveCallbacks.LEVELS.get(), "World save RETURN callbacks must still run exactly once");
+            assertSame(Thread.currentThread(), SaveCallbacks.levelThread);
+            assertEquals("old", read(access.getLevelDirectory().dataFile()).getCompoundOrEmpty("Data").getStringOr("LevelName", ""));
+            blocked.release();
+        }
+        drain();
+        assertEquals("new", read(access.getLevelDirectory().dataFile()).getCompoundOrEmpty("Data").getStringOr("LevelName", ""));
     }
 
     @Test
@@ -212,8 +250,9 @@ class StorageRegressionTest {
         byte[] original = Files.readAllBytes(target);
         Files.createDirectory(backup);
         Files.writeString(backup.resolve("keep.txt"), "unrelated file");
+        Path temporary = Files.createTempFile(directory, "recovery", ".dat");
         var failure = assertThrows(java.io.IOException.class,
-                () -> NbtSaveTransaction.write(playerTag("recovery"), target, backup, "recovery"));
+                () -> NbtSaveTransaction.write(playerTag("recovery"), temporary, target, backup));
         assertTrue(failure.getMessage().contains("completed NBT retained"));
         assertArrayEquals(original, Files.readAllBytes(target));
         assertEquals("unrelated file", Files.readString(backup.resolve("keep.txt")));
@@ -271,7 +310,8 @@ class StorageRegressionTest {
             for (int i = 0; i < 256; i++) FastAsyncWorldSave.threadPool.execute(() -> {});
             Path target = directory.resolve("bounded.dat");
             var producer = background(() -> {
-                FastAsyncWorldSave.save(playerTag("last"), target, directory.resolve("bounded_old.dat"), "bounded");
+                Path temporary = Files.createTempFile(directory, "bounded", ".dat");
+                FastAsyncWorldSave.save(playerTag("last"), temporary, target, directory.resolve("bounded_old.dat"));
                 return true;
             });
             assertWaiting(producer);

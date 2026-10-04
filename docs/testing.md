@@ -34,10 +34,11 @@ Storage and queue tests cover:
 - Metadata rename, direct read, backup, restore and deletion coordinate with queued writes.
 - Queue saturation blocks producers without running saves out of order.
 - Interrupted barriers preserve persistence ordering and the interrupt flag; worker self-wait fails without poisoning the queue.
+- Third-party player/world `RETURN` callbacks execute exactly once on the caller thread while NBT writes remain queued, modeling Essential Commands' separate player-data persistence.
 
 The headless GameTest creates a real `ServerPlayer`, checks its persisted XP and world DayTime, verifies ordinary saves return with the writer blocked, and verifies `saveEverything` and direct `saveAllChunks` flushes wait and persist both files. The harness also performs normal server shutdown. Fabric includes its own additional sanity GameTest in the reported total.
 
-The initial storage regressions reproduce corruption, stale reads, lock release, snapshot mutation and backup/rename failures on the upstream behavior after only the 1.21.11 API migration. The server integration test likewise fails at the flush barrier on that baseline.
+The initial storage regressions reproduce corruption, stale reads, lock release, snapshot mutation and backup/rename failures on the upstream behavior after only the 1.21.11 API migration. The server integration test likewise fails at the flush barrier on that baseline. The callback regressions reproduce skipped persistence hooks on the earlier maintenance implementation that cancelled saves at `HEAD`.
 
 ## Reports and scope
 

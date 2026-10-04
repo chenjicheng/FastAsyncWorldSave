@@ -48,12 +48,12 @@ public final class FastAsyncWorldSave implements ModInitializer {
         LOGGER.info("Fast Async World Save maintenance build for Minecraft 1.21.11");
     }
 
-    /** Capture detached NBT on the caller; perform all file I/O as one ordered task. */
-    public static void save(CompoundTag tag, Path target, Path backup, String temporaryPrefix) {
+    /** Take ownership of vanilla's temporary file and enqueue one write-and-replace transaction. */
+    public static void save(CompoundTag tag, Path temporary, Path target, Path backup) {
         CompoundTag snapshot = tag.copy();
         threadPool.execute(() -> {
             try {
-                NbtSaveTransaction.write(snapshot, target, backup, temporaryPrefix);
+                NbtSaveTransaction.write(snapshot, temporary, target, backup);
             } catch (Exception failure) {
                 LOGGER.error("Failed to save NBT data to {}", target, failure);
             }

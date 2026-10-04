@@ -11,8 +11,7 @@ import net.minecraft.util.Util;
 final class NbtSaveTransaction {
     private NbtSaveTransaction() {}
 
-    static void write(CompoundTag snapshot, Path target, Path backup, String temporaryPrefix) throws IOException {
-        Path temporary = Files.createTempFile(target.getParent(), temporaryPrefix, ".dat");
+    static void write(CompoundTag snapshot, Path temporary, Path target, Path backup) throws IOException {
         try {
             NbtIo.writeCompressed(snapshot, temporary);
         } catch (IOException | RuntimeException failure) {

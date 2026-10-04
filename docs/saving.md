@@ -2,9 +2,11 @@
 
 ## Ownership and transaction boundary
 
-`PlayerDataStorage.save` serializes the live player using vanilla 1.21.11's `ProblemReporter.ScopedCollector` and `TagValueOutput` flow on the caller thread. `LevelStorageAccess.saveLevelData` receives already serialized world metadata. Both call `FastAsyncWorldSave.save`, which deep-copies the NBT before accepting the save. Only the copied NBT and immutable file paths reach the worker.
+`PlayerDataStorage.save` keeps vanilla 1.21.11's caller-thread serialization and control flow. `LevelStorageAccess.saveLevelData` receives already serialized world metadata. Narrow redirects intercept only `NbtIo.writeCompressed` and the following `Util.safeReplaceFile` call, preserving other mods' normal save callbacks, including Essential Commands' player-data persistence at `RETURN`. Both paths call `FastAsyncWorldSave.save`, which deep-copies the NBT before accepting the save. Only copied NBT and immutable file paths reach the worker.
 
-Each task creates a temporary file beside the destination, writes compressed NBT completely, then uses vanilla's `Util.safeReplaceOrMoveFile` to rotate the current file into its backup and publish the temporary file. The worker does not split writing and replacement into separate tasks.
+Vanilla still creates its temporary file beside the destination on the caller thread. Ownership of that exact file transfers to one queued task, which writes compressed NBT completely, then uses vanilla's `Util.safeReplaceOrMoveFile` to rotate the current file into its backup and publish the temporary file. The original replacement call is suppressed; writing and replacement are never separate tasks.
+
+Preserved `RETURN` callbacks run when the save is enqueued, before asynchronous disk publication necessarily finishes. A callback that needs the freshly written vanilla NBT on disk must coordinate through a completion barrier. Essential Commands saves its own in-memory player data to a separate file and does not need that barrier.
 
 On serialization/write failure, the invalid temporary file is removed and neither good file is rotated. Cleanup failures are retained as suppressed exceptions in the logged failure. If publication fails, vanilla performs its retry/recovery sequence and the completed temporary file is retained when still present; its path is included in the exception. Errors include the destination and cause. Later saves continue to run.
 
