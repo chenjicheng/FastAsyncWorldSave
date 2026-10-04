@@ -125,7 +125,14 @@ class StorageRegressionTest {
             saveLevel(levelTag("saved before close"));
             var closing = background(() -> { access.close(); return true; });
             assertWaiting(closing);
-            assertThrows(java.io.IOException.class, () -> source.validateAndCreateAccess("world"));
+            Exception contention = assertThrows(Exception.class, () -> source.validateAndCreateAccess("world"));
+            assertTrue(contention instanceof java.io.IOException
+                    || contention instanceof java.nio.channels.OverlappingFileLockException,
+                    "The filesystem must report lock contention while close waits for queued saves");
+            var lockField = access.getClass().getDeclaredField("lock");
+            lockField.setAccessible(true);
+            var heldLock = (net.minecraft.util.DirectoryLock) lockField.get(access);
+            assertTrue(heldLock.isValid(), "The original world lock must remain valid until the save finishes");
             blocked.release();
             assertTrue(closing.get(10, TimeUnit.SECONDS));
         }
