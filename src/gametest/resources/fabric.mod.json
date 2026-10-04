@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "fastasyncworldsave-gametest",
+  "version": "1.0.0",
+  "name": "FastAsyncWorldSave server tests",
+  "environment": "server",
+  "entrypoints": {
+    "fabric-gametest": [
+      "com.fastasyncworldsave.FlushGameTests"
+    ]
+  },
+  "depends": {
+    "fastasyncworldsave": "*",
+    "fabric-gametest-api-v1": "*"
+  }
+}
